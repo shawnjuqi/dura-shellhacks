@@ -5,7 +5,7 @@
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -15,23 +15,174 @@
  */
 
 import * as THREE from "three";
-
-import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader";
 import { ThreeJSOverlayView } from "@googlemaps/three";
 
 let map: google.maps.Map;
+// References for the 3D model and the overlay to allow dynamic updates
+let carPlaceholder: THREE.Mesh; 
+let threeJsOverlay: ThreeJSOverlayView | undefined; 
 
 const mapOptions = {
-  tilt: 0,
+  tilt: 70, // High tilt for driving perspective
   heading: 0,
   zoom: 18,
-  center: { lat: 35.6594945, lng: 139.6999859 },
+  center: { lat: 29.651634, lng: -82.324829},
   mapId: "15431d2b469f209e",
-  // disable interactions due to animation loop and moveCamera
+  // disable interactions for clean simulation experience
   disableDefaultUI: true,
   gestureHandling: "none",
   keyboardShortcuts: false,
 };
+
+
+// ----------------------------------------------------------------------
+// NEW: VEHICLE STATE AND PHYSICS CONSTANTS
+// ----------------------------------------------------------------------
+
+let vehicleState = {
+  lat: mapOptions.center.lat,
+  lng: mapOptions.center.lng,
+  heading: 0, // In degrees (0 is North/Up)
+  speed: 0,   // In meters per second (m/s)
+  tilt: mapOptions.tilt,
+  zoom: mapOptions.zoom,
+};
+
+// Physics/Control Constants
+const ACCELERATION_RATE = 2.0; // m/s² 
+const DECELERATION_RATE = 4.0; // m/s² (for braking)
+const COASTING_RATE = 1.0;     // m/s² (for natural slowdown)
+const MAX_SPEED = 25;          // m/s (approx 56 mph)
+const TURN_RATE = 60;          // degrees per second
+const TIME_STEP = 1000 / 60;   // Assumed time step (60 FPS) in milliseconds
+
+// Input State
+const keysPressed: { [key: string]: boolean } = {};
+
+
+// ----------------------------------------------------------------------
+// NEW: HELPER FUNCTIONS
+// ----------------------------------------------------------------------
+
+const degToRad = (degrees: number) => degrees * (Math.PI / 180);
+const METERS_TO_LAT = 1 / 111111; // 1 degree of latitude is ~111,111 meters
+
+
+// ----------------------------------------------------------------------
+// NEW: INPUT HANDLING SETUP
+// ----------------------------------------------------------------------
+
+function setupInputHandling() {
+  document.addEventListener("keydown", (event) => {
+    if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(event.key)) {
+        event.preventDefault();
+    }
+    keysPressed[event.key] = true;
+  });
+
+  document.addEventListener("keyup", (event) => {
+    keysPressed[event.key] = false;
+  });
+}
+
+
+// ----------------------------------------------------------------------
+// NEW: CONTINUOUS GAME LOOP (TICK)
+// ----------------------------------------------------------------------
+
+function tick() {
+  const timeSeconds = TIME_STEP / 1000; // time step in seconds
+
+  // -------------------------
+  // 1. UPDATE VEHICLE STATE (Physics)
+  // -------------------------
+
+  // Acceleration/Braking
+  let acceleration = 0;
+  if (keysPressed["ArrowUp"] || keysPressed["w"]) {
+    acceleration = ACCELERATION_RATE;
+  } else if (keysPressed["ArrowDown"] || keysPressed["s"]) {
+    acceleration = -DECELERATION_RATE; 
+  } else if (Math.abs(vehicleState.speed) > 0.01) {
+    acceleration = -Math.sign(vehicleState.speed) * COASTING_RATE;
+  }
+
+  vehicleState.speed += acceleration * timeSeconds;
+  
+  // Clamp speed and handle stop
+  if (vehicleState.speed > MAX_SPEED) {
+    vehicleState.speed = MAX_SPEED;
+  } else if (vehicleState.speed < 0) {
+    vehicleState.speed = 0; // Prevent reverse for now
+  } else if (Math.abs(vehicleState.speed) < 0.1 && acceleration === 0) {
+    vehicleState.speed = 0;
+  }
+
+
+  // Steering (only if moving)
+  if (Math.abs(vehicleState.speed) > 0.1) {
+    const turningEffect = TURN_RATE * timeSeconds;
+
+    if (keysPressed["ArrowLeft"] || keysPressed["a"]) {
+      vehicleState.heading -= turningEffect;
+    }
+    if (keysPressed["ArrowRight"] || keysPressed["d"]) {
+      vehicleState.heading += turningEffect;
+    }
+    vehicleState.heading %= 360;
+  }
+
+  // Update Position based on Heading and Speed
+  const distance = vehicleState.speed * timeSeconds; 
+  const headingRad = degToRad(vehicleState.heading);
+
+  // Calculate change in Latitude (North/South)
+  const dLat = distance * Math.cos(headingRad) * METERS_TO_LAT;
+  vehicleState.lat += dLat;
+
+  // Calculate change in Longitude (East/West), accounting for latitude
+  const dLng =
+    (distance * Math.sin(headingRad) * METERS_TO_LAT) /
+    Math.cos(degToRad(vehicleState.lat));
+  vehicleState.lng += dLng;
+
+  // -------------------------
+  // 2. UPDATE CAMERA & 3D MODEL
+  // -------------------------
+
+  // A) Move the map camera to follow the vehicle's position and heading
+  map.moveCamera({
+    tilt: vehicleState.tilt,
+    heading: vehicleState.heading,
+    zoom: vehicleState.zoom,
+    center: { lat: vehicleState.lat, lng: vehicleState.lng },
+  });
+
+  // B) Move the Three.js scene anchor (which holds the red circle)
+  if (threeJsOverlay) {
+    threeJsOverlay.setAnchor({ 
+        lat: vehicleState.lat, 
+        lng: vehicleState.lng, 
+        altitude: 1 // Keep the object on the road
+    });
+
+    // C) Rotate the red circle to visually represent the heading change
+    // We rotate the circle's Z-axis to match the new heading
+    // (Note: For a circle, this is mainly for debugging/future car model alignment)
+    carPlaceholder.rotation.z = degToRad(-vehicleState.heading); 
+  }
+
+  // -------------------------
+  // 3. GAME LOGIC (Triggers/Questions will be added here later)
+  // -------------------------
+
+  requestAnimationFrame(tick);
+}
+
+
+// ----------------------------------------------------------------------
+// initMap FUNCTION (Integrated with new setup)
+// ----------------------------------------------------------------------
 
 function initMap(): void {
   const mapDiv = document.getElementById("map") as HTMLElement;
@@ -41,49 +192,35 @@ function initMap(): void {
   const scene = new THREE.Scene();
 
   const ambientLight = new THREE.AmbientLight(0xffffff, 0.75);
-
   scene.add(ambientLight);
 
   const directionalLight = new THREE.DirectionalLight(0xffffff, 0.25);
-
   directionalLight.position.set(0, 10, 50);
   scene.add(directionalLight);
 
-  // Load the model.
-  const loader = new GLTFLoader();
-  const url =
-    "https://raw.githubusercontent.com/googlemaps/js-samples/main/assets/pin.gltf";
+  // ------------------------------------------------------------------
+  // Create the Circle Placeholder Car
+  // ------------------------------------------------------------------
+  const geometry = new THREE.CircleGeometry( 2, 32 ); // 2 meter radius
+  const material = new THREE.MeshBasicMaterial( { color: 0xff0000, side: THREE.DoubleSide } );
+  
+  carPlaceholder = new THREE.Mesh( geometry, material );
+  carPlaceholder.rotation.x = Math.PI / 2; // Lay flat on the ground
+  scene.add( carPlaceholder );
 
-  loader.load(url, (gltf) => {
-    gltf.scene.scale.set(10, 10, 10);
-    gltf.scene.rotation.x = Math.PI / 2;
-    scene.add(gltf.scene);
+  // ------------------------------------------------------------------
+  // START THE GAME
+  // ------------------------------------------------------------------
+  setupInputHandling();
+  requestAnimationFrame(tick);
 
-    let { tilt, heading, zoom } = mapOptions;
-
-    const animate = () => {
-      if (tilt < 67.5) {
-        tilt += 0.5;
-      } else if (heading <= 360) {
-        heading += 0.2;
-        zoom -= 0.0005;
-      } else {
-        // exit animation loop
-        return;
-      }
-
-      map.moveCamera({ tilt, heading, zoom });
-
-      requestAnimationFrame(animate);
-    };
-
-    requestAnimationFrame(animate);
-  });
-
-  new ThreeJSOverlayView({
+  // ------------------------------------------------------------------
+  // ThreeJSOverlayView Setup (Store reference for dynamic movement)
+  // ------------------------------------------------------------------
+  threeJsOverlay = new ThreeJSOverlayView({
     map,
     scene,
-    anchor: { ...mapOptions.center, altitude: 100 },
+    anchor: { ...mapOptions.center, altitude: 1 }, 
     THREE,
   });
 }
