@@ -167,6 +167,8 @@ function tick() {
         altitude: 1 // Keep the object on the road
     });
 
+    carPlaceholder.updateHeading(vehicleState.heading)
+
   }
 
   // -------------------------

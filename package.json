@@ -33,6 +33,7 @@
   "private": true,
   "dependencies": {
     "@googlemaps/three": "^4.0.13",
-    "three": "^0.140.2"
+    "@types/three": "^0.180.0",
+    "three": "^0.180.0"
   }
 }
