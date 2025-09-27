@@ -88,7 +88,83 @@ function setupInputHandling() {
 
 
 // ----------------------------------------------------------------------
-// NEW: CONTINUOUS GAME LOOP (TICK)
+// -------------------------
+// BACKEND COORDINATE SYNC SYSTEM
+// -------------------------
+
+let lastBackendSync = 0;
+const BACKEND_SYNC_INTERVAL = 1000; // Send every 1 second
+
+// Backend sync function - easily switchable between dummy and real backend
+async function sendCarCoordinatesToBackend(lat: number, lng: number, heading: number, speed: number): Promise<void> {
+  const now = Date.now();
+  
+  // Only send if enough time has passed (1 second)
+  if (now - lastBackendSync < BACKEND_SYNC_INTERVAL) {
+    return;
+  }
+  
+  lastBackendSync = now;
+  
+  const carData = {
+    timestamp: now,
+    coordinates: {
+      latitude: lat,
+      longitude: lng
+    },
+    heading: heading,
+    speed: speed,
+    playerId: "player_001" // You can make this dynamic
+  };
+
+  try {
+    // DUMMY IMPLEMENTATION - Easy to switch to real backend
+    await dummyBackendSync(carData);
+    
+    // REAL BACKEND IMPLEMENTATION (uncomment when ready)
+    // await realBackendSync(carData);
+    
+  } catch (error) {
+    console.error("Backend sync failed:", error);
+  }
+}
+
+// DUMMY BACKEND - Replace with your real backend
+async function dummyBackendSync(carData: any): Promise<void> {
+  console.log("🚗📡 DUMMY BACKEND SYNC:", {
+    lat: carData.coordinates.latitude.toFixed(6),
+    lng: carData.coordinates.longitude.toFixed(6),
+    heading: carData.heading.toFixed(1),
+    speed: carData.speed.toFixed(2),
+    timestamp: new Date(carData.timestamp).toLocaleTimeString()
+  });
+  
+  // Simulate network delay
+  await new Promise(resolve => setTimeout(resolve, 50));
+}
+
+// REAL BACKEND - Replace with your actual API endpoint
+async function realBackendSync(carData: any): Promise<void> {
+  const response = await fetch('https://your-backend-api.com/api/car-coordinates', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer your-token-here' // Add auth if needed
+    },
+    body: JSON.stringify(carData)
+  });
+  
+  if (!response.ok) {
+    throw new Error(`Backend sync failed: ${response.status}`);
+  }
+  
+  const result = await response.json();
+  console.log("🚗📡 BACKEND SYNC SUCCESS:", result);
+}
+
+// -------------------------
+// GAME LOOP (TICK FUNCTION)
+// -------------------------
 // ----------------------------------------------------------------------
 
 function tick() {
@@ -172,7 +248,16 @@ function tick() {
   }
 
   // -------------------------
-  // 3. GAME LOGIC (Triggers/Questions will be added here later)
+  // 3. BACKEND COORDINATE SYNC
+  // -------------------------
+  
+  // Send car coordinates to backend every second (only when moving)
+  if (vehicleState.speed > 0) {
+    sendCarCoordinatesToBackend(vehicleState.lat, vehicleState.lng, vehicleState.heading, vehicleState.speed);
+  }
+
+  // -------------------------
+  // 4. GAME LOGIC (Triggers/Questions will be added here later)
   // -------------------------
 
   requestAnimationFrame(tick);
