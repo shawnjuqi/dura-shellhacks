@@ -26,7 +26,7 @@ let threeJsOverlay: ThreeJSOverlayView | undefined;
 const mapOptions = {
   tilt: 70, // High tilt for driving perspective
   heading: 0,
-  zoom: 18,
+  zoom: 20,
   center: { lat: 29.651634, lng: -82.324829},
   mapId: "15431d2b469f209e",
   // disable interactions for clean simulation experience
