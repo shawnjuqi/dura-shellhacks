@@ -243,7 +243,11 @@ function tick() {
         altitude: 1 // Keep the object on the road
     });
 
-    carPlaceholder.updateHeading(vehicleState.heading)
+     carPlaceholder.updateHeading(vehicleState.heading);
+     
+     // Update wheel spinning based on speed
+     carPlaceholder.updateWheelRotation(vehicleState.speed);
+     carPlaceholder.animateWheels(TIME_STEP / 1000); // Convert to seconds
 
   }
 
