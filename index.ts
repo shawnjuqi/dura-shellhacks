@@ -16,10 +16,11 @@
 
 import * as THREE from "three";
 import { ThreeJSOverlayView } from "@googlemaps/three";
+import { Car } from "./components/Car";
 
 let map: google.maps.Map;
 // References for the 3D model and the overlay to allow dynamic updates
-let carPlaceholder: THREE.Mesh; 
+let carPlaceholder: Car; 
 let threeJsOverlay: ThreeJSOverlayView | undefined; 
 
 const mapOptions = {
@@ -166,10 +167,6 @@ function tick() {
         altitude: 1 // Keep the object on the road
     });
 
-    // C) Rotate the red circle to visually represent the heading change
-    // We rotate the circle's Z-axis to match the new heading
-    // (Note: For a circle, this is mainly for debugging/future car model alignment)
-    carPlaceholder.rotation.z = degToRad(-vehicleState.heading); 
   }
 
   // -------------------------
@@ -199,14 +196,10 @@ function initMap(): void {
   scene.add(directionalLight);
 
   // ------------------------------------------------------------------
-  // Create the Circle Placeholder Car
+  // Create the Car Component
   // ------------------------------------------------------------------
-  const geometry = new THREE.CircleGeometry( 2, 32 ); // 2 meter radius
-  const material = new THREE.MeshBasicMaterial( { color: 0xff0000, side: THREE.DoubleSide } );
-  
-  carPlaceholder = new THREE.Mesh( geometry, material );
-  carPlaceholder.rotation.x = Math.PI / 2; // Lay flat on the ground
-  scene.add( carPlaceholder );
+  carPlaceholder = new Car();
+  scene.add(carPlaceholder);
 
   // ------------------------------------------------------------------
   // START THE GAME
@@ -217,12 +210,11 @@ function initMap(): void {
   // ------------------------------------------------------------------
   // ThreeJSOverlayView Setup (Store reference for dynamic movement)
   // ------------------------------------------------------------------
-  threeJsOverlay = new ThreeJSOverlayView({
-    map,
-    scene,
-    anchor: { ...mapOptions.center, altitude: 1 }, 
-    THREE,
-  });
+   threeJsOverlay = new ThreeJSOverlayView({
+     map,
+     scene,
+     anchor: { ...mapOptions.center, altitude: 1 }, 
+   });
 }
 
 declare global {
