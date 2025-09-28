@@ -7,9 +7,28 @@
     <script type="module" src="./index.ts"></script>
   </head>
   <body>
+    
+    <div id="auth-controls" style="position: fixed; bottom: 0; left: 0; width: 100%; padding: 10px; background: rgba(0, 0, 0, 0.7); color: white; z-index: 2000; display: flex; justify-content: space-between; align-items: center; font-family: 'Press Start 2P', monospace; font-size: 8px;">
+        <span id="user-status">Status: Loading...</span>
+        <div>
+            <button id="login-btn" class="gameboy-button" style="display: none; margin-right: 10px; background-color: #000000; color: #ffffff; border-color: #ffffff;">LOGIN</button>
+            <button id="logout-btn" class="gameboy-button" style="display: none; background-color: #000000; color: #ffffff; border-color: #ffffff;">LOGOUT</button>
+        </div>
+    </div>
+    
+    <div id="welcome-message">
+        <h1 style="margin: 0;">WELCOME TO DRAURA</h1>
+    </div>
+    
+    <div id="control-message" style="display: none;">
+        <h2 style="margin: 0; font-size: 14px;">CONTROLS</h2>
+        <p style="margin: 10px 0 0; font-size: 10px; line-height: 1.6;">
+            USE ARROW KEYS OR WASD TO DRIVE
+        </p>
+    </div>
+    
     <div id="map" class="map"></div>
     
-    <!-- Game Boy Style Question Dialog -->
     <div id="question-overlay" class="gameboy-screen">
       <div id="question-popup" class="gameboy-dialog">
         <h2 id="question-title">QUESTION TIME!</h2>
@@ -20,7 +39,6 @@
       </div>
     </div>
 
-    <!-- Game Boy Style Alert Dialog -->
     <div id="alert-overlay" class="gameboy-screen" style="display: none;">
       <div id="alert-popup" class="gameboy-dialog">
         <h2 id="alert-title">ALERT!</h2>
@@ -29,7 +47,6 @@
       </div>
     </div>
 
-    <!-- Game Boy Style Confirmation Dialog -->
     <div id="confirm-overlay" class="gameboy-screen" style="display: none;">
       <div id="confirm-popup" class="gameboy-dialog">
         <h2 id="confirm-title">CONFIRM</h2>
@@ -40,9 +57,25 @@
         </div>
       </div>
     </div>
-    <script
-      src="https://maps.googleapis.com/maps/api/js?key=AIzaSyB41DRUbKWJHPxaFjMAwdrzWzbVKartNGg&callback=initMap&v=weekly"
-      defer
-    ></script>
+    
+    <script type="module">
+      const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+      const callbackName = 'initMap'; // Your entry point function
+
+      if (apiKey) {
+        // Construct the script URL dynamically
+        const script = document.createElement('script');
+        script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&callback=${callbackName}&v=weekly`;
+        
+        // Add recommended attributes for best practice loading
+        script.async = true; 
+        script.defer = true;
+        
+        document.head.appendChild(script);
+      } else {
+        console.error("VITE_GOOGLE_MAPS_API_KEY is missing. Please check your .env file.");
+      }
+    </script>
+    
   </body>
-</html> 
+</html>

@@ -83,7 +83,7 @@ body {
   margin-top: 0;
   margin-bottom: 20px;
   color: #000000;
-  font-size: 14px;
+  font-size: 16px !important; /* Increased from 14px */
   line-height: 1.4;
   text-transform: uppercase;
   letter-spacing: 1px;
@@ -91,7 +91,7 @@ body {
 
 #question-popup p {
   color: #000000;
-  font-size: 10px;
+  font-size: 12px !important; /* Increased from 10px */
   line-height: 1.6;
   margin-bottom: 20px;
   text-transform: uppercase;
@@ -374,4 +374,68 @@ body {
   line-height: 1.4;
   text-transform: uppercase;
   letter-spacing: 1px;
+}
+
+/* ---------------------------------------------------- */
+/* Welcome Message Box Style (Moved Up)                 */
+/* ---------------------------------------------------- */
+
+#welcome-message {
+  /* Positioning */
+  position: fixed;
+  top: 40%; /* UPDATED: Moved higher */
+  left: 50%;
+  transform: translate(-50%, -50%); 
+  z-index: 1000;
+  
+  /* Game Boy Look */
+  background: #ffffff;
+  color: #000000;
+  padding: 30px 40px;
+  border: 4px solid #000000;
+  border-radius: 0;
+  text-align: center;
+  font-family: 'Press Start 2P', monospace;
+  image-rendering: pixelated;
+  
+  /* Shadow/Outline Effect (similar to question-popup) */
+  box-shadow: 
+    8px 8px 0px #000000,
+    8px 8px 0px 4px #ffffff,
+    12px 12px 0px #000000;
+}
+
+#welcome-message h1 {
+    font-size: 16px; 
+    line-height: 1.4;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+/* ---------------------------------------------------- */
+/* NEW: Control Message Box Style                       */
+/* ---------------------------------------------------- */
+#control-message {
+  /* Positioning (Centered like the welcome message, slightly lower) */
+  position: fixed;
+  top: 40%; 
+  left: 50%;
+  transform: translate(-50%, -50%); 
+  z-index: 1000;
+  
+  /* Game Boy Look */
+  background: #000000; /* Black background */
+  color: #ffffff;      /* White text */
+  padding: 20px 30px;
+  border: 4px solid #ffffff; /* White border to stand out against the map */
+  border-radius: 0;
+  text-align: center;
+  font-family: 'Press Start 2P', monospace;
+  image-rendering: pixelated;
+  
+  /* Shadow/Outline Effect */
+  box-shadow: 
+    8px 8px 0px #ffffff,
+    8px 8px 0px 4px #000000,
+    12px 12px 0px #ffffff;
 }

@@ -21,22 +21,42 @@ import { ColorDetector } from "./components/ColorDetector";
 import { PointSystem } from "./components/PointSystem";
 import { CONFIG, validateApiKey } from "./config";
 import { gameBoyDialog } from "./components/GameBoyDialog";
+// Import the modular Auth0 functions
+import { 
+    login, 
+    logout, 
+    isAuthenticated as checkIsAuthenticated, 
+    getUser, 
+    handleRedirectCallback 
+} from './auth'; 
+
+
+// ----------------------------------------------------------------------
+// GLOBAL UI AND AUTH0 VARIABLES
+// ----------------------------------------------------------------------
+let isAuthenticated = false;
+let userProfile: any = null;
+const userStatusElement = document.getElementById('user-status');
+const loginButton = document.getElementById('login-btn');
+const logoutButton = document.getElementById('logout-btn');
+// Reference for the welcome message element
+const welcomeMessageElement = document.getElementById('welcome-message');
+const controlMessageElement = document.getElementById('control-message'); // NEW
+let controlsShown = false; // NEW
+
 
 let map: google.maps.Map;
-// References for the 3D model and the overlay to allow dynamic updates
 let carPlaceholder: Car; 
 let threeJsOverlay: ThreeJSOverlayView | undefined;
-// Point system components
 let colorDetector: ColorDetector;
 let pointSystem: PointSystem; 
 
 const mapOptions = {
-  tilt: 70, // High tilt for driving perspective
+  tilt: 70, 
   heading: 0,
   zoom: 20,
   center: { lat: 29.651634, lng: -82.324829},
   mapId: "15431d2b469f209e",
-  // disable interactions for clean simulation experience
   disableDefaultUI: true,
   gestureHandling: "none",
   keyboardShortcuts: false,
@@ -45,59 +65,54 @@ const mapOptions = {
 // ----------------------------------------------------------------------
 // VEHICLE STATE AND PHYSICS CONSTANTS
 // ----------------------------------------------------------------------
-
 let vehicleState = {
   lat: mapOptions.center.lat,
   lng: mapOptions.center.lng,
-  heading: 0, // In degrees (0 is North/Up)
-  speed: 0,   // In meters per second (m/s)
+  heading: 0, 
+  speed: 0,   
   tilt: mapOptions.tilt,
   zoom: mapOptions.zoom,
 };
 
-// Physics/Control Constants
-const ACCELERATION_RATE = 2.0; // m/s² 
-const DECELERATION_RATE = 4.0; // m/s² (for braking)
-const COASTING_RATE = 1.0;     // m/s² (for natural slowdown)
-const MAX_SPEED = 25;          // m/s (approx 56 mph)
-const TURN_RATE = 60;          // degrees per second
-const TIME_STEP = 1000 / 60;   // Assumed time step (60 FPS) in milliseconds
-
-// Input State
+const ACCELERATION_RATE = 2.0; 
+const DECELERATION_RATE = 4.0; 
+const COASTING_RATE = 1.0;     
+const MAX_SPEED = 25;          
+const TURN_RATE = 60;          
+const TIME_STEP = 1000 / 60;   
 const keysPressed: { [key: string]: boolean } = {};
 
-// ----------------------------------------------------------------------
-// HELPER FUNCTIONS
-// ----------------------------------------------------------------------
 
+// ----------------------------------------------------------------------
+// HELPER & INPUT FUNCTIONS
+// ----------------------------------------------------------------------
 const degToRad = (degrees: number) => degrees * (Math.PI / 180);
-const METERS_TO_LAT = 1 / 111111; // 1 degree of latitude is ~111,111 meters
-
-// ----------------------------------------------------------------------
-// INPUT HANDLING SETUP
-// ----------------------------------------------------------------------
-
+const METERS_TO_LAT = 1 / 111111;
 function setupInputHandling() {
   document.addEventListener("keydown", (event) => {
-    if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(event.key)) {
+    // Use toLowerCase for consistent key checks (w, a, s, d)
+    const key = event.key.toLowerCase();
+    if (["arrowup", "arrowdown", "arrowleft", "arrowright", "w", "a", "s", "d"].includes(key)) {
         event.preventDefault();
     }
-    keysPressed[event.key] = true;
+    keysPressed[key] = true;
   });
 
   document.addEventListener("keyup", (event) => {
-    keysPressed[event.key] = false;
+    keysPressed[event.key.toLowerCase()] = false;
   });
 }
 
 // ----------------------------------------------------------------------
-// BACKEND COORDINATE SYNC SYSTEM
+// BACKEND COORDINATE SYNC SYSTEM 
 // ----------------------------------------------------------------------
 
 let lastBackendSync = 0;
-const BACKEND_SYNC_INTERVAL = 1000; // Send every 1 second
+const BACKEND_SYNC_INTERVAL = 1000;
 
 async function sendCarCoordinatesToBackend(lat: number, lng: number, heading: number, speed: number): Promise<void> {
+  if (!isAuthenticated) return;
+
   const now = Date.now();
   if (now - lastBackendSync < BACKEND_SYNC_INTERVAL) return;
   lastBackendSync = now;
@@ -107,7 +122,7 @@ async function sendCarCoordinatesToBackend(lat: number, lng: number, heading: nu
     coordinates: { latitude: lat, longitude: lng },
     heading: heading,
     speed: speed,
-    playerId: "player_001"
+    playerId: userProfile?.sub || "anonymous" 
   };
 
   try {
@@ -119,30 +134,23 @@ async function sendCarCoordinatesToBackend(lat: number, lng: number, heading: nu
 
 async function dummyBackendSync(carData: any): Promise<void> {
   console.log("DUMMY BACKEND SYNC:", {
+    playerId: carData.playerId,
     lat: carData.coordinates.latitude.toFixed(6),
     lng: carData.coordinates.longitude.toFixed(6),
-    heading: carData.heading.toFixed(1),
     speed: carData.speed.toFixed(2),
-    timestamp: new Date(carData.timestamp).toLocaleTimeString()
   });
   await new Promise(resolve => setTimeout(resolve, 50));
 }
 
 // ----------------------------------------------------------------------
-// NEW: QUESTION SYSTEM ❓
+// QUESTION SYSTEM
 // ----------------------------------------------------------------------
-
-// --- Configuration ---
-const QUESTION_INTERVAL = 15000; // Ask a question every 15 seconds
-const FEEDBACK_DELAY = 2000;     // Show feedback for 2 seconds
-
-// --- DOM Element References ---
+const QUESTION_INTERVAL = 15000; 
+const FEEDBACK_DELAY = 2000;     
 let questionOverlay: HTMLElement;
 let questionText: HTMLElement;
 let answerButtonsContainer: HTMLElement;
 let feedbackText: HTMLElement;
-
-// --- Question Data ---
 const QUESTIONS = [
   {
     question: "What is the speed limit in a typical US residential area unless otherwise posted?",
@@ -177,35 +185,25 @@ let currentQuestionIndex = -1;
 let isGamePaused = false;
 
 function setupQuestionSystem() {
+    // Note: We assume the DOM elements for questions are set up in index.html
     questionOverlay = document.getElementById('question-overlay')!;
     questionText = document.getElementById('question-text')!;
     answerButtonsContainer = document.getElementById('answer-buttons')!;
     feedbackText = document.getElementById('feedback-text')!;
 
-    // Add Game Boy screen effect
     gameBoyDialog.addScanLineEffect();
-
-    // Start the timer for the first question
     setTimeout(askQuestion, QUESTION_INTERVAL);
-    
-    // Add some example Game Boy dialogs for demonstration
-    setTimeout(() => {
-      // Show an alert about the game controls
-      gameBoyDialog.showAlert("CONTROLS", "USE ARROW KEYS OR WASD TO DRIVE. ANSWER TRAFFIC QUESTIONS!");
-    }, 5000);
+    // Removed the old 'CONTROLS' alert since we added a permanent UI element
 }
 
 function askQuestion() {
-    isGamePaused = true; // Pause the game
-    
-    // Pick a new, random question
+    isGamePaused = true;
     currentQuestionIndex = (currentQuestionIndex + 1) % QUESTIONS.length;
     const question = QUESTIONS[currentQuestionIndex];
 
-    // Populate the popup
     questionText.textContent = question.question;
     feedbackText.textContent = '';
-    answerButtonsContainer.innerHTML = ''; // Clear old buttons
+    answerButtonsContainer.innerHTML = '';
 
     question.answers.forEach(answer => {
         const button = document.createElement('button');
@@ -217,7 +215,7 @@ function askQuestion() {
 
     questionOverlay.style.display = 'flex';
     
-    // Dim the point system and warnings
+    // Dim the point system and warning when question is active
     const pointsDisplay = document.getElementById('points-display');
     const warningElement = document.getElementById('off-road-warning');
     if (pointsDisplay) {
@@ -229,31 +227,30 @@ function askQuestion() {
 }
 
 function selectAnswer(isCorrect: boolean) {
-    // Disable all buttons
     const buttons = answerButtonsContainer.querySelectorAll('button');
     buttons.forEach(button => button.disabled = true);
 
-    // Show feedback with Game Boy styling
     if (isCorrect) {
         feedbackText.textContent = 'CORRECT!';
         feedbackText.className = 'correct';
-        // Show Game Boy notification for correct answer
         gameBoyDialog.showNotification("CORRECT! +10 POINTS", 2000);
+        // Assuming pointSystem.addPoints exists in PointSystem.ts
+        if (pointSystem && 'addPoints' in pointSystem) {
+             (pointSystem as any).addPoints(100); 
+        }
     } else {
         feedbackText.textContent = 'INCORRECT.';
         feedbackText.className = 'incorrect';
-        // Show Game Boy notification for incorrect answer
         gameBoyDialog.showNotification("WRONG ANSWER! TRY AGAIN", 2000);
     }
 
-    // Hide popup after a delay and resume game
     setTimeout(hideQuestion, FEEDBACK_DELAY);
 }
 
 function hideQuestion() {
     questionOverlay.style.display = 'none';
     
-    // Restore point system and warnings brightness
+    // Un-dim the point system and warning
     const pointsDisplay = document.getElementById('points-display');
     const warningElement = document.getElementById('off-road-warning');
     if (pointsDisplay) {
@@ -263,42 +260,59 @@ function hideQuestion() {
         warningElement.classList.remove('dimmed');
     }
     
-    isGamePaused = false; // Resume the game
-    requestAnimationFrame(tick); // IMPORTANT: Restarts the game loop
+    isGamePaused = false;
+    // Call tick to ensure the game loop restarts
+    requestAnimationFrame(tick);
 
-    // Set timer for the next question
     setTimeout(askQuestion, QUESTION_INTERVAL);
 }
+// ----------------------------------------------------------------------
+
 
 // ----------------------------------------------------------------------
 // GAME LOOP (TICK FUNCTION)
 // ----------------------------------------------------------------------
-
 function tick() {
-  // If the game is paused for a question, stop the loop.
+  // If game is paused by a question, exit the frame loop
   if (isGamePaused) return;
 
   const timeSeconds = TIME_STEP / 1000;
 
-  // 1. UPDATE VEHICLE STATE (Physics)
-  let acceleration = 0;
-  if (keysPressed["ArrowUp"] || keysPressed["w"]) {
-    acceleration = ACCELERATION_RATE;
-  } else if (keysPressed["ArrowDown"] || keysPressed["s"]) {
-    acceleration = -DECELERATION_RATE;
-  } else if (Math.abs(vehicleState.speed) > 0.01) {
-    acceleration = -Math.sign(vehicleState.speed) * COASTING_RATE;
-  }
-  vehicleState.speed += acceleration * timeSeconds;
+  // 1. UPDATE VEHICLE STATE (Physics) 
+  let userAcceleration = 0;
   
-  if (vehicleState.speed > MAX_SPEED) vehicleState.speed = MAX_SPEED;
-  else if (vehicleState.speed < 0) vehicleState.speed = 0;
-  else if (Math.abs(vehicleState.speed) < 0.1 && acceleration === 0) vehicleState.speed = 0;
+  // Check for movement input
+  const isMovingKey = (keysPressed["arrowup"] || keysPressed["w"] || keysPressed["arrowdown"] || keysPressed["s"]);
+
+  if (isMovingKey) {
+      userAcceleration = ACCELERATION_RATE;
+  }
+  
+  // NEW: Check for input and hide controls
+  if (controlsShown && isMovingKey) {
+    if (controlMessageElement) {
+      controlMessageElement.style.display = 'none';
+    }
+    controlsShown = false; // Never show it again
+  }
+  
+  // Physics logic (continues regardless of control message)
+  if (keysPressed["arrowdown"] || keysPressed["s"]) userAcceleration = -DECELERATION_RATE; 
+
+  let friction = 0;
+  if (userAcceleration === 0 && Math.abs(vehicleState.speed) > 0.01) {
+    friction = -Math.sign(vehicleState.speed) * COASTING_RATE;
+  }
+  
+  vehicleState.speed += (userAcceleration + friction) * timeSeconds;
+  
+  if (Math.abs(vehicleState.speed) < 0.1 && userAcceleration === 0) vehicleState.speed = 0;
+  vehicleState.speed = Math.min(Math.max(vehicleState.speed, 0), MAX_SPEED);
 
   if (Math.abs(vehicleState.speed) > 0.1) {
     const turningEffect = TURN_RATE * timeSeconds;
-    if (keysPressed["ArrowLeft"] || keysPressed["a"]) vehicleState.heading -= turningEffect;
-    if (keysPressed["ArrowRight"] || keysPressed["d"]) vehicleState.heading += turningEffect;
+    if (keysPressed["arrowleft"] || keysPressed["a"]) vehicleState.heading -= turningEffect;
+    if (keysPressed["arrowright"] || keysPressed["d"]) vehicleState.heading += turningEffect;
     vehicleState.heading %= 360;
   }
 
@@ -324,9 +338,8 @@ function tick() {
     carPlaceholder.animateWheels(timeSeconds);
   }
 
-  // 3. POINT SYSTEM UPDATE (async road detection)
+  // 3. POINT SYSTEM UPDATE 
   if (colorDetector && pointSystem) {
-    // Use async road detection
     colorDetector.isOnRoad(vehicleState.lat, vehicleState.lng).then(isOnRoad => {
       pointSystem.update(
         { lat: vehicleState.lat, lng: vehicleState.lng }, 
@@ -334,7 +347,6 @@ function tick() {
         vehicleState.speed, 
         timeSeconds
       );
-      // Update API status to show it's working
       if (colorDetector.isInFallbackMode()) {
         pointSystem.updateApiStatus('Fallback Mode', '#FF6B6B');
       } else {
@@ -343,7 +355,6 @@ function tick() {
     }).catch(error => {
       console.warn('Road detection failed:', error);
       pointSystem.updateApiStatus('API Error', '#FF6B6B');
-      // Fallback to false (off road) if detection fails
       pointSystem.update(
         { lat: vehicleState.lat, lng: vehicleState.lng }, 
         false, 
@@ -353,20 +364,69 @@ function tick() {
     });
   }
 
-  // 4. BACKEND COORDINATE SYNC
+  // 4. BACKEND COORDINATE SYNC 
   if (vehicleState.speed > 0) {
     sendCarCoordinatesToBackend(vehicleState.lat, vehicleState.lng, vehicleState.heading, vehicleState.speed);
   }
   
-  // 5. Request the next frame
+  // Request next frame
   requestAnimationFrame(tick);
 }
 
 // ----------------------------------------------------------------------
-// initMap FUNCTION (Integrated with new setup)
+// AUTH0 INTERFACE & STATUS UPDATES
 // ----------------------------------------------------------------------
 
-function initMap(): void {
+async function updateAuthStatus(): Promise<void> {
+  // Use the imported functions from auth.ts
+  isAuthenticated = await checkIsAuthenticated();
+  
+  if (isAuthenticated) {
+    userProfile = await getUser();
+    userStatusElement!.textContent = `Status: Logged in as ${userProfile?.nickname || 'User'}`;
+    loginButton!.style.display = 'none';
+    logoutButton!.style.display = 'block';
+    
+    // HIDE: Hide the welcome message when logged in
+    if (welcomeMessageElement) {
+        welcomeMessageElement.style.display = 'none';
+    }
+    
+    // Start game systems only after successful login
+    initGameSystems();
+    
+    gameBoyDialog.showNotification(`WELCOME BACK, ${userProfile?.nickname?.toUpperCase() || 'DRIVER'}!`, 3000);
+  } else {
+    userStatusElement!.textContent = "Status: Logged out";
+    loginButton!.style.display = 'block';
+    logoutButton!.style.display = 'none';
+    
+    // SHOW: Ensure the welcome message is visible when logged out
+    if (welcomeMessageElement) {
+        welcomeMessageElement.style.display = 'block';
+    }
+    
+    // If logged out, only show the map shell
+    initMapShell();
+    
+    // Only show login prompt when we confirm the user is logged out
+    gameBoyDialog.showNotification("LOG IN TO START DRIVING!", 5000);
+  }
+}
+
+function setupAuthEventListeners(): void {
+    // Attach imported functions to DOM buttons
+    if (loginButton) loginButton.addEventListener('click', login);
+    if (logoutButton) logoutButton.addEventListener('click', logout);
+}
+
+// ----------------------------------------------------------------------
+// MODIFIED: initMapShell (Map Initialization for non-logged-in users)
+// ----------------------------------------------------------------------
+function initMapShell(): void {
+  // Check if map is already initialized to prevent errors on multiple calls
+  if (map) return; 
+  
   const mapDiv = document.getElementById("map") as HTMLElement;
   map = new google.maps.Map(mapDiv, mapOptions);
   const scene = new THREE.Scene();
@@ -377,45 +437,87 @@ function initMap(): void {
   directionalLight.position.set(0, 10, 50);
   scene.add(directionalLight);
   
+  // Create car object but leave it static
   carPlaceholder = new Car();
   scene.add(carPlaceholder);
   
+  // FIX: Passing only the options object to ThreeJSOverlayView
   threeJsOverlay = new ThreeJSOverlayView({
      map,
      scene,
      anchor: { ...mapOptions.center, altitude: 1 }, 
-  });
-  
-  // Initialize point system components
-  if (validateApiKey()) {
-    colorDetector = new ColorDetector(map, CONFIG.GOOGLE_MAPS_API_KEY);
-    console.log('✅ Real road detection enabled with Google Maps Roads API');
-    pointSystem = new PointSystem();
-    pointSystem.updateApiStatus('✅ Real Roads API', '#4CAF50');
-  } else {
-    console.warn('⚠️ Using fallback road detection - configure API key for real roads');
-    // Still create ColorDetector but it will use fallback mode
-    colorDetector = new ColorDetector(map, 'fallback');
-    pointSystem = new PointSystem();
-    pointSystem.updateApiStatus('⚠️ Fallback Mode', '#FF6B6B');
-  }
-  
-  // START THE GAME AND SYSTEMS
-  setupInputHandling();
-  setupQuestionSystem(); // Initialize the question system
-  
-  // Show Game Boy style welcome message
-  setTimeout(() => {
-    gameBoyDialog.showNotification("GAME STARTED! USE ARROW KEYS TO DRIVE", 3000);
-  }, 1000);
-  
-  requestAnimationFrame(tick); // Start the main game loop
+  }); 
 }
+
+
+// ----------------------------------------------------------------------
+// initGameSystems - Starts all game features only after login
+// ----------------------------------------------------------------------
+function initGameSystems(): void {
+  // Initialize point system components
+  if (!pointSystem) {
+    // If map wasn't initialized (first run), call the shell to set up map/car
+    if (!map) {
+        initMapShell(); 
+    }
+    
+    // Initialize required components
+    if (validateApiKey()) {
+      colorDetector = new ColorDetector(map, CONFIG.GOOGLE_MAPS_API_KEY);
+      pointSystem = new PointSystem();
+      pointSystem.updateApiStatus('✅ Real Roads API', '#4CAF50');
+    } else {
+      colorDetector = new ColorDetector(map, 'fallback');
+      pointSystem = new PointSystem();
+      pointSystem.updateApiStatus('⚠️ Fallback Mode', '#FF6B6B');
+    }
+  } else {
+    // If it exists, just reset the game state
+    pointSystem.reset();
+  }
+
+  // Show controls on game start
+  if (controlMessageElement) {
+    controlMessageElement.style.display = 'block';
+    controlsShown = true;
+  }
+
+  // Start input and question systems
+  setupInputHandling();
+  setupQuestionSystem(); 
+  
+  // Start the main game loop if it's not already running
+  if (!isGamePaused) {
+      requestAnimationFrame(tick);
+  }
+}
+
+
+// ----------------------------------------------------------------------
+// GLOBAL ENTRY POINT (Called by Google Maps API script)
+// ----------------------------------------------------------------------
+async function mainEntry(): Promise<void> {
+    // 1. Setup Auth0 event listeners
+    setupAuthEventListeners();
+    
+    // 2. Check for redirect from Auth0 and handle it
+    const query = window.location.search;
+    if (query.includes('code=') && query.includes('state=')) {
+      gameBoyDialog.showNotification("AUTHENTICATING...", 5000);
+      await handleRedirectCallback();
+      // Clean the URL history
+      window.history.replaceState({}, document.title, window.location.origin);
+    }
+    
+    // 3. Update status and start the correct mode (game or shell)
+    await updateAuthStatus();
+}
+
 
 declare global {
   interface Window {
     initMap: () => void;
   }
 }
-window.initMap = initMap;
-export { initMap };
+window.initMap = mainEntry; 
+export { mainEntry };

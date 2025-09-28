@@ -33,8 +33,11 @@
   },
   "private": true,
   "dependencies": {
+    "@auth0/auth0-spa-js": "^2.4.1",
     "@googlemaps/three": "^4.0.13",
     "@types/three": "^0.180.0",
+    "install": "^0.13.0",
+    "npm": "^11.6.1",
     "three": "^0.180.0"
   }
 }
