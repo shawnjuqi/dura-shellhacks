@@ -17,11 +17,17 @@
 import * as THREE from "three";
 import { ThreeJSOverlayView } from "@googlemaps/three";
 import { Car } from "./components/Car";
+import { ColorDetector } from "./components/ColorDetector";
+import { PointSystem } from "./components/PointSystem";
+import { CONFIG, validateApiKey } from "./config";
 
 let map: google.maps.Map;
 // References for the 3D model and the overlay to allow dynamic updates
 let carPlaceholder: Car; 
-let threeJsOverlay: ThreeJSOverlayView | undefined; 
+let threeJsOverlay: ThreeJSOverlayView | undefined;
+// Point system components
+let colorDetector: ColorDetector;
+let pointSystem: PointSystem; 
 
 const mapOptions = {
   tilt: 70, // High tilt for driving perspective
@@ -111,7 +117,7 @@ async function sendCarCoordinatesToBackend(lat: number, lng: number, heading: nu
 }
 
 async function dummyBackendSync(carData: any): Promise<void> {
-  console.log("🚗📡 DUMMY BACKEND SYNC:", {
+  console.log("DUMMY BACKEND SYNC:", {
     lat: carData.coordinates.latitude.toFixed(6),
     lng: carData.coordinates.longitude.toFixed(6),
     heading: carData.heading.toFixed(1),
@@ -209,10 +215,10 @@ function selectAnswer(isCorrect: boolean) {
 
     // Show feedback
     if (isCorrect) {
-        feedbackText.textContent = 'Correct! ✅';
+        feedbackText.textContent = 'Correct!';
         feedbackText.className = 'correct';
     } else {
-        feedbackText.textContent = 'Incorrect. ❌';
+        feedbackText.textContent = 'Incorrect.';
         feedbackText.className = 'incorrect';
     }
 
@@ -283,12 +289,41 @@ function tick() {
     carPlaceholder.animateWheels(timeSeconds);
   }
 
-  // 3. BACKEND COORDINATE SYNC
+  // 3. POINT SYSTEM UPDATE (async road detection)
+  if (colorDetector && pointSystem) {
+    // Use async road detection
+    colorDetector.isOnRoad(vehicleState.lat, vehicleState.lng).then(isOnRoad => {
+      pointSystem.update(
+        { lat: vehicleState.lat, lng: vehicleState.lng }, 
+        isOnRoad, 
+        vehicleState.speed, 
+        timeSeconds
+      );
+      // Update API status to show it's working
+      if (colorDetector.isInFallbackMode()) {
+        pointSystem.updateApiStatus('Fallback Mode', '#FF6B6B');
+      } else {
+        pointSystem.updateApiStatus('Real Roads API', '#4CAF50');
+      }
+    }).catch(error => {
+      console.warn('Road detection failed:', error);
+      pointSystem.updateApiStatus('API Error', '#FF6B6B');
+      // Fallback to false (off road) if detection fails
+      pointSystem.update(
+        { lat: vehicleState.lat, lng: vehicleState.lng }, 
+        false, 
+        vehicleState.speed, 
+        timeSeconds
+      );
+    });
+  }
+
+  // 4. BACKEND COORDINATE SYNC
   if (vehicleState.speed > 0) {
     sendCarCoordinatesToBackend(vehicleState.lat, vehicleState.lng, vehicleState.heading, vehicleState.speed);
   }
   
-  // 4. Request the next frame
+  // 5. Request the next frame
   requestAnimationFrame(tick);
 }
 
@@ -315,6 +350,20 @@ function initMap(): void {
      scene,
      anchor: { ...mapOptions.center, altitude: 1 }, 
   });
+  
+  // Initialize point system components
+  if (validateApiKey()) {
+    colorDetector = new ColorDetector(map, CONFIG.GOOGLE_MAPS_API_KEY);
+    console.log('✅ Real road detection enabled with Google Maps Roads API');
+    pointSystem = new PointSystem();
+    pointSystem.updateApiStatus('✅ Real Roads API', '#4CAF50');
+  } else {
+    console.warn('⚠️ Using fallback road detection - configure API key for real roads');
+    // Still create ColorDetector but it will use fallback mode
+    colorDetector = new ColorDetector(map, 'fallback');
+    pointSystem = new PointSystem();
+    pointSystem.updateApiStatus('⚠️ Fallback Mode', '#FF6B6B');
+  }
   
   // START THE GAME AND SYSTEMS
   setupInputHandling();
