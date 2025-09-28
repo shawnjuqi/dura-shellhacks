@@ -1,9 +1,4 @@
 <!doctype html>
-<!--
- @license
- Copyright 2019 Google LLC. All Rights Reserved.
- SPDX-License-Identifier: Apache-2.0
--->
 <html>
   <head>
     <title>Simple ThreeJS Overlay View</title>
@@ -13,17 +8,18 @@
   </head>
   <body>
     <div id="map" class="map"></div>
-
-    <!-- 
-      The `defer` attribute causes the script to execute after the full HTML
-      document has been parsed. For non-blocking uses, avoiding race conditions,
-      and consistent behavior across browsers, consider loading using Promises. See
-      https://developers.google.com/maps/documentation/javascript/load-maps-js-api
-      for more information.
-      -->
+     <div id="question-overlay">
+      <div id="question-popup">
+        <h2 id="question-title">Question Time!</h2>
+        <p id="question-text">This is where the question will appear.</p>
+        <div id="answer-buttons" class="btn-grid">
+          </div>
+        <p id="feedback-text"></p>
+      </div>
+    </div>
     <script
       src="https://maps.googleapis.com/maps/api/js?key=AIzaSyB41DRUbKWJHPxaFjMAwdrzWzbVKartNGg&callback=initMap&v=weekly"
       defer
     ></script>
   </body>
-</html>
+</html> 

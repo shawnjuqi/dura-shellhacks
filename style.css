@@ -3,25 +3,107 @@
  * Copyright 2019 Google LLC. All Rights Reserved.
  * SPDX-License-Identifier: Apache-2.0
  */
-/* 
- * Always set the map height explicitly to define the size of the div element
+
+/* * Always set the map height explicitly to define the size of the div element
  * that contains the map. 
  */
 #map {
   height: 100%;
 }
 
-/* 
- * Optional: Makes the sample page fill the window. 
+/* * Optional: Makes the sample page fill the window. 
  */
 html,
 body {
   height: 100%;
   margin: 0;
   padding: 0;
+  font-family: sans-serif;
 }
 
 #map {
   pointer-events: none;
 }
 
+/* ---------------------------------------------------- */
+/* Styles for the Question Popup System                 */
+/* ---------------------------------------------------- */
+
+/* The main overlay that covers the entire screen */
+#question-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.8); /* Semi-transparent black */
+  display: none; /* Hidden by default */
+  justify-content: center;
+  align-items: center;
+  z-index: 1000; /* Ensures it's on top of everything */
+}
+
+/* The popup window itself */
+#question-popup {
+  background: white;
+  padding: 25px;
+  border-radius: 12px;
+  text-align: center;
+  width: 90%;
+  max-width: 500px;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+}
+
+#question-popup h2 {
+  margin-top: 0;
+  color: #333;
+}
+
+/* A grid container for the answer buttons */
+.btn-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr); /* 2x2 grid */
+  gap: 12px;
+  margin: 25px 0;
+}
+
+/* Styling for each answer button */
+.answer-btn {
+  padding: 12px 15px;
+  border: 2px solid #007bff;
+  background-color: white;
+  color: #007bff;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 1rem;
+  font-weight: bold;
+  transition: background-color 0.2s, color 0.2s;
+}
+
+/* Hover effect for buttons */
+.answer-btn:hover {
+  background-color: #007bff;
+  color: white;
+}
+
+/* Style for when buttons are disabled after an answer is chosen */
+.answer-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+/* Styling for the feedback text (e.g., "Correct!" or "Incorrect.") */
+#feedback-text {
+  min-height: 24px; /* Prevents layout shift when text appears */
+  font-weight: bold;
+  font-size: 1.2em;
+  margin-top: 15px;
+}
+
+.correct {
+  color: #28a745; /* Green */
+}
+
+.incorrect {
+  color: #dc3545; /* Red */
+}

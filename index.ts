@@ -35,9 +35,8 @@ const mapOptions = {
   keyboardShortcuts: false,
 };
 
-
 // ----------------------------------------------------------------------
-// NEW: VEHICLE STATE AND PHYSICS CONSTANTS
+// VEHICLE STATE AND PHYSICS CONSTANTS
 // ----------------------------------------------------------------------
 
 let vehicleState = {
@@ -60,17 +59,15 @@ const TIME_STEP = 1000 / 60;   // Assumed time step (60 FPS) in milliseconds
 // Input State
 const keysPressed: { [key: string]: boolean } = {};
 
-
 // ----------------------------------------------------------------------
-// NEW: HELPER FUNCTIONS
+// HELPER FUNCTIONS
 // ----------------------------------------------------------------------
 
 const degToRad = (degrees: number) => degrees * (Math.PI / 180);
 const METERS_TO_LAT = 1 / 111111; // 1 degree of latitude is ~111,111 meters
 
-
 // ----------------------------------------------------------------------
-// NEW: INPUT HANDLING SETUP
+// INPUT HANDLING SETUP
 // ----------------------------------------------------------------------
 
 function setupInputHandling() {
@@ -86,50 +83,33 @@ function setupInputHandling() {
   });
 }
 
-
 // ----------------------------------------------------------------------
-// -------------------------
 // BACKEND COORDINATE SYNC SYSTEM
-// -------------------------
+// ----------------------------------------------------------------------
 
 let lastBackendSync = 0;
 const BACKEND_SYNC_INTERVAL = 1000; // Send every 1 second
 
-// Backend sync function - easily switchable between dummy and real backend
 async function sendCarCoordinatesToBackend(lat: number, lng: number, heading: number, speed: number): Promise<void> {
   const now = Date.now();
-  
-  // Only send if enough time has passed (1 second)
-  if (now - lastBackendSync < BACKEND_SYNC_INTERVAL) {
-    return;
-  }
-  
+  if (now - lastBackendSync < BACKEND_SYNC_INTERVAL) return;
   lastBackendSync = now;
   
   const carData = {
     timestamp: now,
-    coordinates: {
-      latitude: lat,
-      longitude: lng
-    },
+    coordinates: { latitude: lat, longitude: lng },
     heading: heading,
     speed: speed,
-    playerId: "player_001" // You can make this dynamic
+    playerId: "player_001"
   };
 
   try {
-    // DUMMY IMPLEMENTATION - Easy to switch to real backend
     await dummyBackendSync(carData);
-    
-    // REAL BACKEND IMPLEMENTATION (uncomment when ready)
-    // await realBackendSync(carData);
-    
   } catch (error) {
     console.error("Backend sync failed:", error);
   }
 }
 
-// DUMMY BACKEND - Replace with your real backend
 async function dummyBackendSync(carData: any): Promise<void> {
   console.log("🚗📡 DUMMY BACKEND SYNC:", {
     lat: carData.coordinates.latitude.toFixed(6),
@@ -138,96 +118,157 @@ async function dummyBackendSync(carData: any): Promise<void> {
     speed: carData.speed.toFixed(2),
     timestamp: new Date(carData.timestamp).toLocaleTimeString()
   });
-  
-  // Simulate network delay
   await new Promise(resolve => setTimeout(resolve, 50));
 }
 
-// REAL BACKEND - Replace with your actual API endpoint
-async function realBackendSync(carData: any): Promise<void> {
-  const response = await fetch('https://your-backend-api.com/api/car-coordinates', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': 'Bearer your-token-here' // Add auth if needed
-    },
-    body: JSON.stringify(carData)
-  });
-  
-  if (!response.ok) {
-    throw new Error(`Backend sync failed: ${response.status}`);
-  }
-  
-  const result = await response.json();
-  console.log("🚗📡 BACKEND SYNC SUCCESS:", result);
+// ----------------------------------------------------------------------
+// NEW: QUESTION SYSTEM ❓
+// ----------------------------------------------------------------------
+
+// --- Configuration ---
+const QUESTION_INTERVAL = 15000; // Ask a question every 15 seconds
+const FEEDBACK_DELAY = 2000;     // Show feedback for 2 seconds
+
+// --- DOM Element References ---
+let questionOverlay: HTMLElement;
+let questionText: HTMLElement;
+let answerButtonsContainer: HTMLElement;
+let feedbackText: HTMLElement;
+
+// --- Question Data ---
+const QUESTIONS = [
+  {
+    question: "What is the speed limit in a typical US residential area unless otherwise posted?",
+    answers: [
+      { text: "25 mph", correct: true },
+      { text: "35 mph", correct: false },
+      { text: "15 mph", correct: false },
+      { text: "45 mph", correct: false },
+    ],
+  },
+  {
+    question: "A flashing red traffic light at an intersection means:",
+    answers: [
+      { text: "Stop and proceed when safe.", correct: true },
+      { text: "Slow down and proceed with caution.", correct: false },
+      { text: "Speed up to clear the intersection.", correct: false },
+      { text: "The traffic light is broken.", correct: false },
+    ],
+  },
+  {
+    question: "What does a solid yellow line on your side of the road mean?",
+    answers: [
+      { text: "Do not pass.", correct: true },
+      { text: "Passing is allowed.", correct: false },
+      { text: "Upcoming merge.", correct: false },
+      { text: "School zone ahead.", correct: false },
+    ],
+  },
+];
+
+let currentQuestionIndex = -1;
+let isGamePaused = false;
+
+function setupQuestionSystem() {
+    questionOverlay = document.getElementById('question-overlay')!;
+    questionText = document.getElementById('question-text')!;
+    answerButtonsContainer = document.getElementById('answer-buttons')!;
+    feedbackText = document.getElementById('feedback-text')!;
+
+    // Start the timer for the first question
+    setTimeout(askQuestion, QUESTION_INTERVAL);
 }
 
-// -------------------------
+function askQuestion() {
+    isGamePaused = true; // Pause the game
+    
+    // Pick a new, random question
+    currentQuestionIndex = (currentQuestionIndex + 1) % QUESTIONS.length;
+    const question = QUESTIONS[currentQuestionIndex];
+
+    // Populate the popup
+    questionText.textContent = question.question;
+    feedbackText.textContent = '';
+    answerButtonsContainer.innerHTML = ''; // Clear old buttons
+
+    question.answers.forEach(answer => {
+        const button = document.createElement('button');
+        button.textContent = answer.text;
+        button.classList.add('answer-btn');
+        button.addEventListener('click', () => selectAnswer(answer.correct));
+        answerButtonsContainer.appendChild(button);
+    });
+
+    questionOverlay.style.display = 'flex';
+}
+
+function selectAnswer(isCorrect: boolean) {
+    // Disable all buttons
+    const buttons = answerButtonsContainer.querySelectorAll('button');
+    buttons.forEach(button => button.disabled = true);
+
+    // Show feedback
+    if (isCorrect) {
+        feedbackText.textContent = 'Correct! ✅';
+        feedbackText.className = 'correct';
+    } else {
+        feedbackText.textContent = 'Incorrect. ❌';
+        feedbackText.className = 'incorrect';
+    }
+
+    // Hide popup after a delay and resume game
+    setTimeout(hideQuestion, FEEDBACK_DELAY);
+}
+
+function hideQuestion() {
+    questionOverlay.style.display = 'none';
+    isGamePaused = false; // Resume the game
+    requestAnimationFrame(tick); // IMPORTANT: Restarts the game loop
+
+    // Set timer for the next question
+    setTimeout(askQuestion, QUESTION_INTERVAL);
+}
+
+// ----------------------------------------------------------------------
 // GAME LOOP (TICK FUNCTION)
-// -------------------------
 // ----------------------------------------------------------------------
 
 function tick() {
-  const timeSeconds = TIME_STEP / 1000; // time step in seconds
+  // If the game is paused for a question, stop the loop.
+  if (isGamePaused) return;
 
-  // -------------------------
+  const timeSeconds = TIME_STEP / 1000;
+
   // 1. UPDATE VEHICLE STATE (Physics)
-  // -------------------------
-
-  // Acceleration/Braking
   let acceleration = 0;
   if (keysPressed["ArrowUp"] || keysPressed["w"]) {
     acceleration = ACCELERATION_RATE;
   } else if (keysPressed["ArrowDown"] || keysPressed["s"]) {
-    acceleration = -DECELERATION_RATE; 
+    acceleration = -DECELERATION_RATE;
   } else if (Math.abs(vehicleState.speed) > 0.01) {
     acceleration = -Math.sign(vehicleState.speed) * COASTING_RATE;
   }
-
   vehicleState.speed += acceleration * timeSeconds;
   
-  // Clamp speed and handle stop
-  if (vehicleState.speed > MAX_SPEED) {
-    vehicleState.speed = MAX_SPEED;
-  } else if (vehicleState.speed < 0) {
-    vehicleState.speed = 0; // Prevent reverse for now
-  } else if (Math.abs(vehicleState.speed) < 0.1 && acceleration === 0) {
-    vehicleState.speed = 0;
-  }
+  if (vehicleState.speed > MAX_SPEED) vehicleState.speed = MAX_SPEED;
+  else if (vehicleState.speed < 0) vehicleState.speed = 0;
+  else if (Math.abs(vehicleState.speed) < 0.1 && acceleration === 0) vehicleState.speed = 0;
 
-
-  // Steering (only if moving)
   if (Math.abs(vehicleState.speed) > 0.1) {
     const turningEffect = TURN_RATE * timeSeconds;
-
-    if (keysPressed["ArrowLeft"] || keysPressed["a"]) {
-      vehicleState.heading -= turningEffect;
-    }
-    if (keysPressed["ArrowRight"] || keysPressed["d"]) {
-      vehicleState.heading += turningEffect;
-    }
+    if (keysPressed["ArrowLeft"] || keysPressed["a"]) vehicleState.heading -= turningEffect;
+    if (keysPressed["ArrowRight"] || keysPressed["d"]) vehicleState.heading += turningEffect;
     vehicleState.heading %= 360;
   }
 
-  // Update Position based on Heading and Speed
-  const distance = vehicleState.speed * timeSeconds; 
+  const distance = vehicleState.speed * timeSeconds;
   const headingRad = degToRad(vehicleState.heading);
-
-  // Calculate change in Latitude (North/South)
   const dLat = distance * Math.cos(headingRad) * METERS_TO_LAT;
   vehicleState.lat += dLat;
-
-  // Calculate change in Longitude (East/West), accounting for latitude
-  const dLng =
-    (distance * Math.sin(headingRad) * METERS_TO_LAT) /
-    Math.cos(degToRad(vehicleState.lat));
+  const dLng = (distance * Math.sin(headingRad) * METERS_TO_LAT) / Math.cos(degToRad(vehicleState.lat));
   vehicleState.lng += dLng;
 
-  // -------------------------
   // 2. UPDATE CAMERA & 3D MODEL
-  // -------------------------
-
-  // A) Move the map camera to follow the vehicle's position and heading
   map.moveCamera({
     tilt: vehicleState.tilt,
     heading: vehicleState.heading,
@@ -235,38 +276,21 @@ function tick() {
     center: { lat: vehicleState.lat, lng: vehicleState.lng },
   });
 
-  // B) Move the Three.js scene anchor (which holds the red circle)
   if (threeJsOverlay) {
-    threeJsOverlay.setAnchor({ 
-        lat: vehicleState.lat, 
-        lng: vehicleState.lng, 
-        altitude: 1 // Keep the object on the road
-    });
-
-     carPlaceholder.updateHeading(vehicleState.heading);
-     
-     // Update wheel spinning based on speed
-     carPlaceholder.updateWheelRotation(vehicleState.speed);
-     carPlaceholder.animateWheels(TIME_STEP / 1000); // Convert to seconds
-
+    threeJsOverlay.setAnchor({ lat: vehicleState.lat, lng: vehicleState.lng, altitude: 1 });
+    carPlaceholder.updateHeading(vehicleState.heading);
+    carPlaceholder.updateWheelRotation(vehicleState.speed);
+    carPlaceholder.animateWheels(timeSeconds);
   }
 
-  // -------------------------
   // 3. BACKEND COORDINATE SYNC
-  // -------------------------
-  
-  // Send car coordinates to backend every second (only when moving)
   if (vehicleState.speed > 0) {
     sendCarCoordinatesToBackend(vehicleState.lat, vehicleState.lng, vehicleState.heading, vehicleState.speed);
   }
-
-  // -------------------------
-  // 4. GAME LOGIC (Triggers/Questions will be added here later)
-  // -------------------------
-
+  
+  // 4. Request the next frame
   requestAnimationFrame(tick);
 }
-
 
 // ----------------------------------------------------------------------
 // initMap FUNCTION (Integrated with new setup)
@@ -274,38 +298,28 @@ function tick() {
 
 function initMap(): void {
   const mapDiv = document.getElementById("map") as HTMLElement;
-
   map = new google.maps.Map(mapDiv, mapOptions);
-
   const scene = new THREE.Scene();
 
   const ambientLight = new THREE.AmbientLight(0xffffff, 0.75);
   scene.add(ambientLight);
-
   const directionalLight = new THREE.DirectionalLight(0xffffff, 0.25);
   directionalLight.position.set(0, 10, 50);
   scene.add(directionalLight);
-
-  // ------------------------------------------------------------------
-  // Create the Car Component
-  // ------------------------------------------------------------------
+  
   carPlaceholder = new Car();
   scene.add(carPlaceholder);
-
-  // ------------------------------------------------------------------
-  // START THE GAME
-  // ------------------------------------------------------------------
-  setupInputHandling();
-  requestAnimationFrame(tick);
-
-  // ------------------------------------------------------------------
-  // ThreeJSOverlayView Setup (Store reference for dynamic movement)
-  // ------------------------------------------------------------------
-   threeJsOverlay = new ThreeJSOverlayView({
+  
+  threeJsOverlay = new ThreeJSOverlayView({
      map,
      scene,
      anchor: { ...mapOptions.center, altitude: 1 }, 
-   });
+  });
+  
+  // START THE GAME AND SYSTEMS
+  setupInputHandling();
+  setupQuestionSystem(); // Initialize the question system
+  requestAnimationFrame(tick); // Start the main game loop
 }
 
 declare global {

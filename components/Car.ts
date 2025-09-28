@@ -1,7 +1,7 @@
 import * as THREE from "three";
 
 export class Car extends THREE.Group {
-  private wheels: THREE.Mesh[] = [];
+  private wheels: THREE.Group[] = [];
   private wheelRotationSpeed: number = 0;
   private dustParticles: THREE.Mesh[] = [];
 
@@ -190,29 +190,27 @@ export class Car extends THREE.Group {
   }
 
   private animateDustParticles(deltaTime: number): void {
-    this.dustParticles.forEach((particle, index) => {
-      if (this.wheelRotationSpeed > 0.5) { // Only show dust at higher speeds
+    this.dustParticles.forEach((particle) => {
+      if (this.wheelRotationSpeed > 0.5) {
         particle.visible = true;
         
-        // Animate particle movement
-        particle.position.y -= 2 * deltaTime; // Move backward
-        particle.position.x += (Math.random() - 0.5) * 0.5 * deltaTime; // Random horizontal drift
-        particle.position.z += Math.sin(Date.now() * 0.01 + index) * 0.1 * deltaTime; // Floating motion
+        particle.position.y -= 2 * deltaTime;
+        particle.position.x += (Math.random() - 0.5) * 0.5 * deltaTime;
         
-        // Fade out particles over time
+        // This "if" statement is a type guard.
+        // It ensures all code inside only runs if the material is the correct type.
         if (particle.material instanceof THREE.MeshBasicMaterial) {
+          // Fade out particles over time
           particle.material.opacity = Math.max(0, particle.material.opacity - deltaTime * 0.5);
-        }
-        
-        // Reset particle when it fades out or moves too far
-        if (particle.material.opacity <= 0 || particle.position.y < -4) {
-          particle.position.set(
-            (Math.random() - 0.5) * 2,
-            -2.5 + Math.random() * 0.5,
-            -0.3 + Math.random() * 0.2
-          );
-          if (particle.material instanceof THREE.MeshBasicMaterial) {
-            particle.material.opacity = 0.7;
+          
+          // NEW: The reset check is now safely inside the type guard
+          if (particle.material.opacity <= 0 || particle.position.y < -4) {
+            particle.position.set(
+              (Math.random() - 0.5) * 2,
+              -2.5 + Math.random() * 0.5,
+              Math.random() * 0.2
+            );
+            particle.material.opacity = 0.7; // Reset opacity
           }
         }
       } else {
