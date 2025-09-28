@@ -20,6 +20,7 @@ import { Car } from "./components/Car";
 import { ColorDetector } from "./components/ColorDetector";
 import { PointSystem } from "./components/PointSystem";
 import { CONFIG, validateApiKey } from "./config";
+import { gameBoyDialog } from "./components/GameBoyDialog";
 
 let map: google.maps.Map;
 // References for the 3D model and the overlay to allow dynamic updates
@@ -181,8 +182,17 @@ function setupQuestionSystem() {
     answerButtonsContainer = document.getElementById('answer-buttons')!;
     feedbackText = document.getElementById('feedback-text')!;
 
+    // Add Game Boy screen effect
+    gameBoyDialog.addScanLineEffect();
+
     // Start the timer for the first question
     setTimeout(askQuestion, QUESTION_INTERVAL);
+    
+    // Add some example Game Boy dialogs for demonstration
+    setTimeout(() => {
+      // Show an alert about the game controls
+      gameBoyDialog.showAlert("CONTROLS", "USE ARROW KEYS OR WASD TO DRIVE. ANSWER TRAFFIC QUESTIONS!");
+    }, 5000);
 }
 
 function askQuestion() {
@@ -206,6 +216,16 @@ function askQuestion() {
     });
 
     questionOverlay.style.display = 'flex';
+    
+    // Dim the point system and warnings
+    const pointsDisplay = document.getElementById('points-display');
+    const warningElement = document.getElementById('off-road-warning');
+    if (pointsDisplay) {
+        pointsDisplay.classList.add('dimmed');
+    }
+    if (warningElement) {
+        warningElement.classList.add('dimmed');
+    }
 }
 
 function selectAnswer(isCorrect: boolean) {
@@ -213,13 +233,17 @@ function selectAnswer(isCorrect: boolean) {
     const buttons = answerButtonsContainer.querySelectorAll('button');
     buttons.forEach(button => button.disabled = true);
 
-    // Show feedback
+    // Show feedback with Game Boy styling
     if (isCorrect) {
-        feedbackText.textContent = 'Correct!';
+        feedbackText.textContent = 'CORRECT!';
         feedbackText.className = 'correct';
+        // Show Game Boy notification for correct answer
+        gameBoyDialog.showNotification("CORRECT! +10 POINTS", 2000);
     } else {
-        feedbackText.textContent = 'Incorrect.';
+        feedbackText.textContent = 'INCORRECT.';
         feedbackText.className = 'incorrect';
+        // Show Game Boy notification for incorrect answer
+        gameBoyDialog.showNotification("WRONG ANSWER! TRY AGAIN", 2000);
     }
 
     // Hide popup after a delay and resume game
@@ -228,6 +252,17 @@ function selectAnswer(isCorrect: boolean) {
 
 function hideQuestion() {
     questionOverlay.style.display = 'none';
+    
+    // Restore point system and warnings brightness
+    const pointsDisplay = document.getElementById('points-display');
+    const warningElement = document.getElementById('off-road-warning');
+    if (pointsDisplay) {
+        pointsDisplay.classList.remove('dimmed');
+    }
+    if (warningElement) {
+        warningElement.classList.remove('dimmed');
+    }
+    
     isGamePaused = false; // Resume the game
     requestAnimationFrame(tick); // IMPORTANT: Restarts the game loop
 
@@ -368,6 +403,12 @@ function initMap(): void {
   // START THE GAME AND SYSTEMS
   setupInputHandling();
   setupQuestionSystem(); // Initialize the question system
+  
+  // Show Game Boy style welcome message
+  setTimeout(() => {
+    gameBoyDialog.showNotification("GAME STARTED! USE ARROW KEYS TO DRIVE", 3000);
+  }, 1000);
+  
   requestAnimationFrame(tick); // Start the main game loop
 }
 

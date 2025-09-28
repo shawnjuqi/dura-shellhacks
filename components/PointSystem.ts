@@ -15,52 +15,49 @@ export class PointSystem {
   }
   
   private createUI() {
-    // Create points display
+    // Create Game Boy style points display
     const pointsDiv = document.createElement('div');
     pointsDiv.id = 'points-display';
+    pointsDiv.className = 'gameboy-points-display';
     pointsDiv.style.cssText = `
       position: fixed;
       top: 20px;
       right: 20px;
-      background: rgba(0, 0, 0, 0.9);
-      color: white;
-      padding: 20px;
-      border-radius: 15px;
-      font-family: 'Arial', sans-serif;
-      font-size: 16px;
+      background: #ffffff;
+      color: #000000;
+      padding: 16px;
+      border: 4px solid #000000;
+      border-radius: 0;
+      font-family: 'Press Start 2P', monospace;
+      font-size: 8px;
       z-index: 1000;
-      min-width: 200px;
-      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+      min-width: 220px;
+      box-shadow: 
+        6px 6px 0px #000000;
+      image-rendering: pixelated;
+      line-height: 1.4;
     `;
     pointsDiv.innerHTML = `
-      <div style="text-align: center; margin-bottom: 15px;">
-        <h3 style="margin: 0; color: #4CAF50;">🏆 POINTS SYSTEM</h3>
+      <div style="text-align: center; margin-bottom: 12px;">
+        <h3 style="margin: 0; color: #000000; font-size: 10px; text-transform: uppercase; letter-spacing: 1px;">POINTS SYSTEM</h3>
       </div>
-      <div style="margin-bottom: 10px;">
-        <strong>Points:</strong> <span id="points-value" style="color: #FFD700; font-size: 18px;">0</span>
+      <div style="margin-bottom: 8px;">
+        <span style="text-transform: uppercase;">POINTS:</span> <span id="points-value" style="color: #000000; font-size: 10px;">0</span>
       </div>
-      <div style="margin-bottom: 10px;">
-        <strong>Status:</strong> <span id="road-status" style="font-weight: bold;">Off Road</span>
+      <div style="margin-bottom: 8px;">
+        <span style="text-transform: uppercase;">STATUS:</span> <span id="road-status" style="font-weight: normal; text-transform: uppercase;">OFF ROAD</span>
       </div>
-      <div style="margin-bottom: 10px;">
-        <strong>Multiplier:</strong> <span id="multiplier" style="color: #FF6B6B;">1.0x</span>
+      <div style="margin-bottom: 8px;">
+        <span style="text-transform: uppercase;">MULTIPLIER:</span> <span id="multiplier" style="color: #000000;">1.0X</span>
       </div>
-      <div style="margin-bottom: 10px;">
-        <strong>Distance on Road:</strong> <span id="distance" style="color: #4ECDC4;">0m</span>
+      <div style="margin-bottom: 8px;">
+        <span style="text-transform: uppercase;">DISTANCE:</span> <span id="distance" style="color: #000000;">0M</span>
       </div>
-      <div style="margin-bottom: 10px;">
-        <strong>API Status:</strong> <span id="api-status" style="color: #FFD700;">Loading...</span>
+      <div style="margin-bottom: 8px;">
+        <span style="text-transform: uppercase;">API:</span> <span id="api-status" style="color: #000000;">LOADING...</span>
       </div>
-      <div style="text-align: center; margin-top: 15px;">
-        <button id="reset-points" style="
-          background: #FF6B6B;
-          color: white;
-          border: none;
-          padding: 8px 16px;
-          border-radius: 5px;
-          cursor: pointer;
-          font-size: 12px;
-        ">Reset Points</button>
+      <div style="text-align: center; margin-top: 12px;">
+        <button id="reset-points" class="gameboy-button" style="font-size: 6px; padding: 6px 12px;">RESET POINTS</button>
       </div>
     `;
     document.body.appendChild(pointsDiv);
@@ -73,29 +70,39 @@ export class PointSystem {
   }
   
   private createWarningSystem() {
-    // Create warning element in top-left corner
+    // Create Game Boy style warning element in top-left corner
     this.warningElement = document.createElement('div');
     this.warningElement.id = 'off-road-warning';
+    this.warningElement.className = 'gameboy-warning';
     this.warningElement.style.cssText = `
       position: fixed;
       top: 20px;
       left: 20px;
-      background: rgba(255, 107, 107, 0.9);
-      color: white;
-      padding: 15px 20px;
-      border-radius: 10px;
-      font-family: 'Arial', sans-serif;
-      font-size: 16px;
-      font-weight: bold;
+      background: #000000;
+      color: #ffffff;
+      padding: 12px 16px;
+      border: 3px solid #000000;
+      border-radius: 0;
+      font-family: 'Press Start 2P', monospace;
+      font-size: 8px;
+      font-weight: normal;
       z-index: 1000;
-      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+      box-shadow: 
+        4px 4px 0px #000000,
+        4px 4px 0px 2px #ffffff,
+        6px 6px 0px #000000;
       display: none;
       transition: opacity 0.3s ease;
+      image-rendering: pixelated;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      line-height: 1.4;
+      animation: gameboy-warning-pulse 1s infinite;
     `;
     this.warningElement.innerHTML = `
-      <div style="display: flex; align-items: center; gap: 10px;">
-        <span style="font-size: 20px;">⚠️</span>
-        <span>You're off-road! Points will be lost.</span>
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <span style="font-size: 10px;">!</span>
+        <span>OFF ROAD! POINTS LOST!</span>
       </div>
     `;
     document.body.appendChild(this.warningElement);
@@ -164,19 +171,19 @@ export class PointSystem {
     
     if (pointsElement) pointsElement.textContent = this.points.toLocaleString();
     if (statusElement) {
-      statusElement.textContent = this.isOnRoad ? '🛣️ On Road' : '🚫 Off Road';
-      statusElement.style.color = this.isOnRoad ? '#4CAF50' : '#FF6B6B';
+      statusElement.textContent = this.isOnRoad ? 'ON ROAD' : 'OFF ROAD';
+      statusElement.style.color = '#000000'; // Always black in Game Boy style
     }
     if (multiplierElement) {
-      multiplierElement.textContent = `${this.pointMultiplier.toFixed(1)}x`;
-      multiplierElement.style.color = this.pointMultiplier > 1 ? '#FFD700' : '#FF6B6B';
+      multiplierElement.textContent = `${this.pointMultiplier.toFixed(1)}X`;
+      multiplierElement.style.color = '#000000'; // Always black in Game Boy style
     }
     if (distanceElement) {
-      distanceElement.textContent = `${Math.round(this.totalDistanceOnRoad)}m`;
+      distanceElement.textContent = `${Math.round(this.totalDistanceOnRoad)}M`;
     }
     if (apiStatusElement) {
       // This will be updated by the main system
-      apiStatusElement.textContent = '🔄 Checking...';
+      apiStatusElement.textContent = 'CHECKING...';
     }
     
     // Show/hide off-road warning
@@ -193,8 +200,10 @@ export class PointSystem {
   updateApiStatus(status: string, color: string = '#FFD700') {
     const apiStatusElement = document.getElementById('api-status');
     if (apiStatusElement) {
-      apiStatusElement.textContent = status;
-      apiStatusElement.style.color = color;
+      // Convert status to Game Boy style (uppercase, no emojis)
+      const gameBoyStatus = status.replace(/[^\w\s]/g, '').toUpperCase();
+      apiStatusElement.textContent = gameBoyStatus;
+      apiStatusElement.style.color = '#000000'; // Always black in Game Boy style
     }
   }
   

@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+
 /**
  * @license
  * Copyright 2019 Google LLC. All Rights Reserved.
@@ -26,7 +28,7 @@ body {
 }
 
 /* ---------------------------------------------------- */
-/* Styles for the Question Popup System                 */
+/* Game Boy Style Dialog System                        */
 /* ---------------------------------------------------- */
 
 /* The main overlay that covers the entire screen */
@@ -36,74 +38,340 @@ body {
   left: 0;
   width: 100%;
   height: 100%;
-  background-color: rgba(0, 0, 0, 0.8); /* Semi-transparent black */
+  background-color: rgba(0, 0, 0, 0.9); /* Dark overlay */
   display: none; /* Hidden by default */
   justify-content: center;
   align-items: center;
   z-index: 1000; /* Ensures it's on top of everything */
+  font-family: 'Press Start 2P', monospace;
+  image-rendering: pixelated;
+  image-rendering: -moz-crisp-edges;
+  image-rendering: crisp-edges;
 }
 
-/* The popup window itself */
+/* The popup window itself - Game Boy style */
 #question-popup {
-  background: white;
-  padding: 25px;
-  border-radius: 12px;
+  background: #ffffff;
+  padding: 20px;
+  border: 4px solid #000000;
+  border-radius: 0; /* No rounded corners for pixelated look */
   text-align: center;
   width: 90%;
-  max-width: 500px;
-  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+  max-width: 480px;
+  box-shadow: 
+    8px 8px 0px #000000,
+    8px 8px 0px 4px #ffffff,
+    12px 12px 0px #000000;
+  position: relative;
+  image-rendering: pixelated;
+}
+
+/* Pixelated border effect */
+#question-popup::before {
+  content: '';
+  position: absolute;
+  top: -8px;
+  left: -8px;
+  right: -8px;
+  bottom: -8px;
+  background: #000000;
+  z-index: -1;
+  border: 2px solid #000000;
 }
 
 #question-popup h2 {
   margin-top: 0;
-  color: #333;
+  margin-bottom: 20px;
+  color: #000000;
+  font-size: 14px;
+  line-height: 1.4;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+#question-popup p {
+  color: #000000;
+  font-size: 10px;
+  line-height: 1.6;
+  margin-bottom: 20px;
+  text-transform: uppercase;
 }
 
 /* A grid container for the answer buttons */
 .btn-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr); /* 2x2 grid */
-  gap: 12px;
-  margin: 25px 0;
+  gap: 8px;
+  margin: 20px 0;
 }
 
-/* Styling for each answer button */
+/* Styling for each answer button - Game Boy style */
 .answer-btn {
-  padding: 12px 15px;
-  border: 2px solid #007bff;
-  background-color: white;
-  color: #007bff;
-  border-radius: 8px;
+  padding: 12px 8px;
+  border: 3px solid #000000;
+  background-color: #ffffff;
+  color: #000000;
+  border-radius: 0; /* No rounded corners */
   cursor: pointer;
-  font-size: 1rem;
-  font-weight: bold;
-  transition: background-color 0.2s, color 0.2s;
+  font-size: 8px;
+  font-weight: normal;
+  font-family: 'Press Start 2P', monospace;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  line-height: 1.2;
+  transition: none; /* Remove smooth transitions for pixelated feel */
+  position: relative;
+  image-rendering: pixelated;
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Game Boy button press effect */
+.answer-btn:active {
+  background-color: #000000;
+  color: #ffffff;
+  transform: translate(2px, 2px);
+  box-shadow: 2px 2px 0px #000000;
 }
 
 /* Hover effect for buttons */
 .answer-btn:hover {
-  background-color: #007bff;
-  color: white;
+  background-color: #f0f0f0;
+  color: #000000;
 }
 
 /* Style for when buttons are disabled after an answer is chosen */
 .answer-btn:disabled {
   cursor: not-allowed;
-  opacity: 0.6;
+  background-color: #cccccc;
+  color: #666666;
+  opacity: 0.7;
 }
 
-/* Styling for the feedback text (e.g., "Correct!" or "Incorrect.") */
+/* Styling for the feedback text - Game Boy style */
 #feedback-text {
-  min-height: 24px; /* Prevents layout shift when text appears */
-  font-weight: bold;
-  font-size: 1.2em;
+  min-height: 24px;
+  font-weight: normal;
+  font-size: 10px;
   margin-top: 15px;
+  font-family: 'Press Start 2P', monospace;
+  text-transform: uppercase;
+  letter-spacing: 1px;
 }
 
 .correct {
-  color: #28a745; /* Green */
+  color: #000000;
+  background-color: #ffffff;
+  padding: 8px;
+  border: 2px solid #000000;
+  display: inline-block;
 }
 
 .incorrect {
-  color: #dc3545; /* Red */
+  color: #ffffff;
+  background-color: #000000;
+  padding: 8px;
+  border: 2px solid #000000;
+  display: inline-block;
+}
+
+/* Game Boy pixelated animations */
+@keyframes pixelate-bounce {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-2px); }
+}
+
+.answer-btn:hover {
+  animation: pixelate-bounce 0.3s ease-in-out;
+}
+
+/* Pixelated selection effect */
+.answer-btn.selected {
+  background-color: #000000;
+  color: #ffffff;
+  box-shadow: inset 0 0 0 2px #ffffff;
+}
+
+/* Game Boy screen effect */
+#question-overlay.gameboy-screen {
+  background: 
+    radial-gradient(circle at 50% 50%, rgba(0,0,0,0.1) 0%, rgba(0,0,0,0.9) 100%),
+    linear-gradient(90deg, 
+      rgba(0,0,0,0.05) 0%, 
+      rgba(0,0,0,0.1) 25%, 
+      rgba(0,0,0,0.05) 50%, 
+      rgba(0,0,0,0.1) 75%, 
+      rgba(0,0,0,0.05) 100%);
+  background-size: 100% 100%, 4px 4px;
+}
+
+/* Additional Game Boy dialog styles */
+.gameboy-dialog {
+  font-family: 'Press Start 2P', monospace;
+  image-rendering: pixelated;
+  image-rendering: -moz-crisp-edges;
+  image-rendering: crisp-edges;
+}
+
+.gameboy-button {
+  font-family: 'Press Start 2P', monospace;
+  border: 3px solid #000000;
+  background-color: #ffffff;
+  color: #000000;
+  padding: 8px 16px;
+  font-size: 8px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  cursor: pointer;
+  transition: none;
+  image-rendering: pixelated;
+}
+
+.gameboy-button:hover {
+  background-color: #f0f0f0;
+}
+
+.gameboy-button:active {
+  background-color: #000000;
+  color: #ffffff;
+  transform: translate(1px, 1px);
+}
+
+/* Game Boy Notification Styles */
+.gameboy-notification {
+  animation: pixelate-slide-in 0.3s ease-in-out;
+}
+
+@keyframes pixelate-slide-in {
+  0% {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  100% {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+/* Game Boy Screen Scan Lines */
+.gameboy-screen::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0, 0, 0, 0.1) 2px,
+    rgba(0, 0, 0, 0.1) 4px
+  );
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* Game Boy Dialog Animations */
+@keyframes gameboy-popup {
+  0% {
+    transform: scale(0.8) translateY(-20px);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.05) translateY(0);
+    opacity: 0.8;
+  }
+  100% {
+    transform: scale(1) translateY(0);
+    opacity: 1;
+  }
+}
+
+.gameboy-dialog {
+  animation: gameboy-popup 0.4s ease-out;
+}
+
+/* Pixelated button press sound effect (visual) */
+@keyframes pixelate-press {
+  0% { transform: translate(0, 0); }
+  50% { transform: translate(1px, 1px); }
+  100% { transform: translate(0, 0); }
+}
+
+.answer-btn:active,
+.gameboy-button:active {
+  animation: pixelate-press 0.1s ease-out;
+}
+
+/* Game Boy text typing effect */
+.typing-text {
+  border-right: 2px solid #000000;
+  animation: blink-cursor 1s infinite;
+}
+
+@keyframes blink-cursor {
+  0%, 50% { border-color: #000000; }
+  51%, 100% { border-color: transparent; }
+}
+
+/* Game Boy dialog close animation */
+@keyframes gameboy-popup-out {
+  0% {
+    transform: scale(1) translateY(0);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(0.8) translateY(-20px);
+    opacity: 0;
+  }
+}
+
+.gameboy-dialog.closing {
+  animation: gameboy-popup-out 0.3s ease-in;
+}
+
+/* Game Boy Warning Pulse Animation */
+@keyframes gameboy-warning-pulse {
+  0%, 100% {
+    background-color: #000000;
+    color: #ffffff;
+  }
+  50% {
+    background-color: #ffffff;
+    color: #000000;
+  }
+}
+
+/* Game Boy Points Display Styles */
+.gameboy-points-display {
+  position: relative;
+  transition: opacity 0.3s ease;
+}
+
+/* Darken point system and warnings when question overlay is shown */
+.gameboy-points-display.dimmed,
+.gameboy-warning.dimmed {
+  opacity: 0.3;
+}
+
+/* Larger Question Text */
+#question-popup p {
+  color: #000000;
+  font-size: 12px !important; /* Increased from 10px */
+  line-height: 1.6;
+  margin-bottom: 20px;
+  text-transform: uppercase;
+}
+
+#question-popup h2 {
+  margin-top: 0;
+  margin-bottom: 20px;
+  color: #000000;
+  font-size: 16px !important; /* Increased from 14px */
+  line-height: 1.4;
+  text-transform: uppercase;
+  letter-spacing: 1px;
 }

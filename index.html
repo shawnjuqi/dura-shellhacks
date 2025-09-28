@@ -8,13 +8,36 @@
   </head>
   <body>
     <div id="map" class="map"></div>
-     <div id="question-overlay">
-      <div id="question-popup">
-        <h2 id="question-title">Question Time!</h2>
+    
+    <!-- Game Boy Style Question Dialog -->
+    <div id="question-overlay" class="gameboy-screen">
+      <div id="question-popup" class="gameboy-dialog">
+        <h2 id="question-title">QUESTION TIME!</h2>
         <p id="question-text">This is where the question will appear.</p>
         <div id="answer-buttons" class="btn-grid">
-          </div>
+        </div>
         <p id="feedback-text"></p>
+      </div>
+    </div>
+
+    <!-- Game Boy Style Alert Dialog -->
+    <div id="alert-overlay" class="gameboy-screen" style="display: none;">
+      <div id="alert-popup" class="gameboy-dialog">
+        <h2 id="alert-title">ALERT!</h2>
+        <p id="alert-text">This is an alert message.</p>
+        <button id="alert-ok-btn" class="gameboy-button">OK</button>
+      </div>
+    </div>
+
+    <!-- Game Boy Style Confirmation Dialog -->
+    <div id="confirm-overlay" class="gameboy-screen" style="display: none;">
+      <div id="confirm-popup" class="gameboy-dialog">
+        <h2 id="confirm-title">CONFIRM</h2>
+        <p id="confirm-text">Are you sure?</p>
+        <div class="btn-grid" style="grid-template-columns: repeat(2, 1fr); max-width: 200px; margin: 20px auto;">
+          <button id="confirm-yes-btn" class="gameboy-button">YES</button>
+          <button id="confirm-no-btn" class="gameboy-button">NO</button>
+        </div>
       </div>
     </div>
     <script
